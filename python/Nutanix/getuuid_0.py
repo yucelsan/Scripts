@@ -1,5 +1,8 @@
-#AUTHOR : Serdar AYSAN
-#This script help to have VMuuid for Nutanix VM
+# - NUTANIX VM GET UUID SCRIPT
+# - AUTHOR : SERDAR AYSAN
+# - COMPANY : YUCELSAN
+
+# This script help to have VMuuid for Nutanix VM
 
 """
 #REAL NUTANIX COMMAND EXEMPLE

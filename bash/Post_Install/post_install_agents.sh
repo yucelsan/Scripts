@@ -1,7 +1,7 @@
 #!/bin/bash
-# PostInstall Linux Script 
-#Author : Serdar AYSAN
-#Company : YUCELSAN
+# - PostInstall Linux Script 
+# - Author : Serdar AYSAN
+# - Company : YUCELSAN
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/sfw/bin:$PATH
 OS_BINARY_TYPE=''

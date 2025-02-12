@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# - VTOM DEBIAN INSTALL SCRIPT
+# - AUTHOR : SERDAR AYSAN
+# - COMPANY : YUCELSAN
+
 #PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/sfw/bin:$PATH
 SUCCESS=0
 WARNING=1

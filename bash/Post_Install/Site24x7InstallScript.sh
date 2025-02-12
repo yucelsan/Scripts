@@ -1,8 +1,8 @@
 #!/bin/bash
-# Install command 
-# 		sudo bash -c "$(curl -sL https://staticdownloads.site24x7.com/server/Site24x7InstallScript.sh)" readlink -i -key=<device_key>
-#Author : Serdar AYSAN
-#Company : YUCELSAN
+# - SITE24X7 Install command 
+# - sudo bash -c "$(curl -sL https://staticdownloads.site24x7.com/server/Site24x7InstallScript.sh)" readlink -i -key=<device_key>
+# - Author : Serdar AYSAN
+# - Company : YUCELSAN
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/sfw/bin:$PATH
 PS_CMD='ps auxww '

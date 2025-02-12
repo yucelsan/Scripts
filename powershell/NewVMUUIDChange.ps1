@@ -24,9 +24,10 @@ function New-VMBIOSGUID
 		Performs normal WhatIf operations by displaying the change that would be made. However, the new BIOSGUID is automatically generated on each run. The one that WhatIf displays will not be used.
 	.NOTES
 		Version 1.0
+		AUTHOR : SERDAR AYSAN
+		COMPANY : YUCELSAN
 
-
-		This script comes with no warranty, express or implied. Neither Altaro Software nor Eric Siron are liable for any damages, intentional or otherwise, that arise from its use in any capacity.
+		This script comes with no warranty, express or implied. Neither YUCELSAN nor SERDAR AYSAN are liable for any damages, intentional or otherwise, that arise from its use in any capacity.
 	.INPUTS
 		Microsoft.HyperV.PowerShell.VirtualMachine or System.String
 		System.GUID

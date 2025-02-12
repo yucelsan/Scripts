@@ -1,7 +1,7 @@
 #!/bin/bash
-# PostInstall remove & uninstall agents 
-#Author : Serdar AYSAN
-#Company : YUCELSAN
+# - PostInstall remove & uninstall agents 
+# - Author : Serdar AYSAN
+# - Company : YUCELSAN
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/usr/sfw/bin:$PATH
 OS_BINARY_TYPE=''
