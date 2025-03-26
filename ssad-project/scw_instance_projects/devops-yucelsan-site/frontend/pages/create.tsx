@@ -1,0 +1,1 @@
+export default function Create() { return <div>Create Environment Page</div>; }
