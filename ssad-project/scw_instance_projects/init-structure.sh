@@ -32,4 +32,4 @@ touch deployments/github-actions/ci.yml
 
 touch README.md LICENSE .gitignore
 
-echo '✅ Structure du projet créée avec succès !'
+echo 'Structure du projet créée avec succès !'
