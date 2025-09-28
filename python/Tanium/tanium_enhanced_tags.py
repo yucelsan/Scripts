@@ -37,7 +37,7 @@ sc = SHARED_CONSTANTS()
 # 
 # Application
 # P1 : hostnameapplicationnametags
-# P2 : manutanapplicationname
+# P2 : taniumapplicationname
 # P3 : App-TANI
 # Environment
 # P1 : hostnameenvironmenttags
