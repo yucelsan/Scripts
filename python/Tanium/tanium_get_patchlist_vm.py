@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------------------------------
 import time
 
-from tanium.orchestration_functions import \
+from orchestration_functions import \
      generate_tanium_question_and_id, \
      get_question_result_info, \
      calculate_question_completion_percentage, \

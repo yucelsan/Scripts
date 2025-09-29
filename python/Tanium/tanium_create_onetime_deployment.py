@@ -6,7 +6,7 @@
 #------------------------------------------------------------------------------------------------------
 from datetime import datetime, timedelta
 
-from tanium.orchestration_functions import get_management_rights_group_id_by_name, create_patch_deployment
+from orchestration_functions import get_management_rights_group_id_by_name, create_patch_deployment
 from tanium_login import Login
 
 def patch_vm(lg: Login, VmType, FqdnList, PatchList_ID, EnvType, ApplicationQuadrigram):

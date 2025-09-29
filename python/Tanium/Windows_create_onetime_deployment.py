@@ -33,7 +33,7 @@ deployment in Tanium.
 
 # computers to be targeted for patching for inputting into deployment configuration
 # comma separated
-targetedComputerNames = "RO-dc-02.dc.home.com,tanos-win2016-0.local.dc"
+targetedComputerNames = "test1.server.local,test2.server.local"
 
 # Deployment Name variable for inputting into deployment configuration
 deployment_name = "API Create Windows One-Time Deployment Test"

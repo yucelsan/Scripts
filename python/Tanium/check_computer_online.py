@@ -11,7 +11,7 @@ import sys
 
 from tanium_login import Login
 
-from tanium.orchestration_functions import \
+from orchestration_functions import \
      build_regex_computer_list, \
      generate_tanium_question_and_id, \
      get_question_result_info, \
