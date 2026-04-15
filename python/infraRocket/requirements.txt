@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+sqlalchemy
+psycopg2-binary
+python-dotenv
+ldap3
+itsdangerous
+passlib
+requests

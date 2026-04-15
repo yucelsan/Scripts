@@ -1,0 +1,43 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>INFRA-Rocket - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=10">
+</head>
+<body>
+    <header>
+        <h1>INFRA 🚀</h1>
+        <div>
+            Connecté : {{ user.login }} ({{ user.role }}) |
+            <a href="/dashboard">Dashboard</a> |
+            <a href="/topology">Cartographie</a>
+            {% if user.role == 'admin' %} | <a href="/admin/users">Utilisateurs</a>{% endif %} |
+            <a href="/logout">Déconnexion</a>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <div class="card">
+            <h2>Alertes critiques</h2>
+            <p>{{ zabbix.critical_alerts }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Licences critiques</h2>
+            <p>0</p>
+        </div>
+
+        <div class="card">
+            <h2>Serveurs down</h2>
+            <p>{{ zabbix.down_hosts }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Dernière synchronisation</h2>
+            <p>{{ zabbix.last_sync }}</p>
+        </div>
+    </main>
+</body>
+</html>

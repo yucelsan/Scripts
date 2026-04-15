@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>INFRA-Rocket - Gestion des utilisateurs</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=40">
+</head>
+<body class="topology-shell">
+    <aside class="admin-rail">
+        <div class="rail-brand">INFRA 🚀</div>
+        <nav class="rail-menu">
+            <a href="/dashboard" class="rail-item">
+                <span class="rail-icon">🏠</span>
+                <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="/topology" class="rail-item">
+                <span class="rail-icon">🗺️</span>
+                <span class="rail-label">Cartographie</span>
+            </a>
+            <a href="/admin/users" class="rail-item active">
+                <span class="rail-icon">👥</span>
+                <span class="rail-label">Utilisateurs</span>
+            </a>
+        </nav>
+        <div class="rail-footer">
+            <a href="/logout" class="rail-item">
+                <span class="rail-icon">↩</span>
+                <span class="rail-label">Déconnexion</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="topology-main">
+        <header class="topology-topbar">
+            <div>
+                <h1>Gestion des utilisateurs</h1>
+                <p>{{ users | length }} utilisateur(s) enregistré(s)</p>
+            </div>
+            <div class="topbar-user">
+                Connecté : {{ user.login }} ({{ user.role }})
+            </div>
+        </header>
+
+        {% if success %}
+        <div class="alert alert-success">✓ {{ success }}</div>
+        {% endif %}
+        {% if error %}
+        <div class="alert alert-error">✗ {{ error }}</div>
+        {% endif %}
+
+        <div style="margin-bottom: 18px;">
+            <a href="/admin/users/add" class="btn-primary">+ Ajouter un utilisateur</a>
+        </div>
+
+        <div class="card">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Login</th>
+                        <th>Nom complet</th>
+                        <th>Email</th>
+                        <th>Service</th>
+                        <th>Rôle</th>
+                        <th>Statut</th>
+                        <th>Dernière connexion</th>
+                        <th>Créé le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr class="{% if not u.is_active %}row-inactive{% endif %}">
+                        <td><strong>{{ u.login }}</strong></td>
+                        <td>{{ u.full_name or '—' }}</td>
+                        <td>{{ u.email or '—' }}</td>
+                        <td>{{ u.service or '—' }}</td>
+                        <td>
+                            <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+                        </td>
+                        <td>
+                            {% if u.is_active %}
+                                <span class="status-badge status-active">Actif</span>
+                            {% else %}
+                                <span class="status-badge status-inactive">Inactif</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ u.last_login_at or '—' }}</td>
+                        <td>{{ u.created_at or '—' }}</td>
+                        <td class="actions-cell">
+                            <a href="/admin/users/edit/{{ u.login }}" class="btn-edit">Modifier</a>
+                            {% if u.login != user.login %}
+                            <form method="post" action="/admin/users/delete/{{ u.login }}"
+                                  onsubmit="return confirm('Supprimer l\'utilisateur {{ u.login }} ?');"
+                                  style="display:inline;">
+                                <button type="submit" class="btn-delete">Supprimer</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align:center; color:#7a9cc6; padding: 24px;">
+                            Aucun utilisateur enregistré.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <style>
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        .alert-success {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid #22c55e;
+            color: #86efac;
+        }
+        .alert-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .btn-primary {
+            display: inline-block;
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            text-decoration: none;
+            font-size: 15px;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .admin-table th {
+            background: #0f1b33;
+            color: #7db2ff;
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid #1e3254;
+        }
+        .admin-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #1a2a42;
+            vertical-align: middle;
+        }
+        .admin-table tbody tr:hover { background: #0f1e38; }
+        .row-inactive td { opacity: 0.55; }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .role-admin {
+            background: rgba(139, 92, 246, 0.18);
+            color: #c4b5fd;
+            border: 1px solid #7c3aed;
+        }
+        .role-user {
+            background: rgba(37, 99, 235, 0.18);
+            color: #93c5fd;
+            border: 1px solid #2563eb;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .status-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid #16a34a;
+        }
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid #dc2626;
+        }
+        .actions-cell { display: flex; gap: 8px; align-items: center; }
+        .btn-edit {
+            background: #1d4ed8;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-edit:hover { background: #2563eb; }
+        .btn-delete {
+            background: rgba(220, 38, 38, 0.15);
+            color: #fca5a5;
+            border: 1px solid #dc2626;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-delete:hover { background: rgba(220, 38, 38, 0.3); }
+    </style>
+</body>
+</html>

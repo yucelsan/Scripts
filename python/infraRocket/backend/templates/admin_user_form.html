@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>INFRA-Rocket - {% if action == 'add' %}Ajouter{% else %}Modifier{% endif %} un utilisateur</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=40">
+</head>
+<body class="topology-shell">
+    <aside class="admin-rail">
+        <div class="rail-brand">INFRA 🚀</div>
+        <nav class="rail-menu">
+            <a href="/dashboard" class="rail-item">
+                <span class="rail-icon">🏠</span>
+                <span class="rail-label">Dashboard</span>
+            </a>
+            <a href="/topology" class="rail-item">
+                <span class="rail-icon">🗺️</span>
+                <span class="rail-label">Cartographie</span>
+            </a>
+            <a href="/admin/users" class="rail-item active">
+                <span class="rail-icon">👥</span>
+                <span class="rail-label">Utilisateurs</span>
+            </a>
+        </nav>
+        <div class="rail-footer">
+            <a href="/logout" class="rail-item">
+                <span class="rail-icon">↩</span>
+                <span class="rail-label">Déconnexion</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="topology-main">
+        <header class="topology-topbar">
+            <div>
+                <h1>{% if action == 'add' %}Ajouter un utilisateur{% else %}Modifier : {{ form_user.login }}{% endif %}</h1>
+                <p><a href="/admin/users" style="color:#7db2ff;">← Retour à la liste</a></p>
+            </div>
+            <div class="topbar-user">
+                Connecté : {{ user.login }} ({{ user.role }})
+            </div>
+        </header>
+
+        {% if error %}
+        <div class="alert alert-error">✗ {{ error }}</div>
+        {% endif %}
+
+        <div class="card form-card">
+            <form method="post"
+                  action="{% if action == 'add' %}/admin/users/add{% else %}/admin/users/edit/{{ form_user.login }}{% endif %}">
+
+                {% if action == 'add' %}
+                <div class="form-group">
+                    <label for="login">Login <span class="required">*</span></label>
+                    <input type="text" id="login" name="login"
+                           value="{{ form_user.login if form_user else '' }}"
+                           placeholder="ex: jdupont"
+                           required autocomplete="off">
+                    <small>Doit correspondre au login Active Directory</small>
+                </div>
+                {% endif %}
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="prenom">Prénom</label>
+                        <input type="text" id="prenom" name="prenom"
+                               value="{{ form_user.prenom if form_user else '' }}"
+                               placeholder="Jean">
+                    </div>
+                    <div class="form-group">
+                        <label for="nom">Nom</label>
+                        <input type="text" id="nom" name="nom"
+                               value="{{ form_user.nom if form_user else '' }}"
+                               placeholder="Dupont">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email"
+                           value="{{ form_user.email if form_user else '' }}"
+                           placeholder="jean.dupont@exemple.fr">
+                </div>
+
+                <div class="form-group">
+                    <label for="service">Service</label>
+                    <input type="text" id="service" name="service"
+                           value="{{ form_user.service if form_user else '' }}"
+                           placeholder="ex: DSI, Réseau, Sécurité…">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="role">Rôle <span class="required">*</span></label>
+                        <select id="role" name="role"
+                                {% if action == 'edit' and form_user.login == user.login %}disabled{% endif %}>
+                            <option value="user"
+                                {% if form_user and form_user.role == 'user' %}selected{% endif %}>
+                                Utilisateur
+                            </option>
+                            <option value="admin"
+                                {% if form_user and form_user.role == 'admin' %}selected{% endif %}>
+                                Administrateur
+                            </option>
+                        </select>
+                        {% if action == 'edit' and form_user.login == user.login %}
+                        <small class="field-locked">🔒 Vous ne pouvez pas modifier votre propre rôle</small>
+                        {% endif %}
+                    </div>
+                    <div class="form-group form-group-checkbox">
+                        <label class="checkbox-label {% if action == 'edit' and form_user.login == user.login %}label-locked{% endif %}">
+                            <input type="checkbox" name="is_active" value="on"
+                                   {% if not form_user or form_user.is_active %}checked{% endif %}
+                                   {% if action == 'edit' and form_user.login == user.login %}disabled{% endif %}>
+                            <span>Compte actif</span>
+                        </label>
+                        {% if action == 'edit' and form_user.login == user.login %}
+                        <small class="field-locked">🔒 Vous ne pouvez pas désactiver votre propre compte</small>
+                        {% else %}
+                        <small>Un compte inactif ne peut pas se connecter</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="/admin/users" class="btn-cancel">Annuler</a>
+                    <button type="submit" class="btn-submit">
+                        {% if action == 'add' %}Créer l'utilisateur{% else %}Enregistrer les modifications{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <style>
+        .alert {
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        .alert-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .form-card { max-width: 700px; }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #c7d7f2;
+        }
+        .form-group small {
+            font-size: 12px;
+            color: #7a9cc6;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group select {
+            background: #0d1a30;
+            border: 1px solid #2a3d63;
+            border-radius: 8px;
+            color: #ffffff;
+            padding: 10px 14px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2563eb;
+        }
+        .form-group select option { background: #0d1a30; }
+        .required { color: #ef4444; }
+        .form-group-checkbox { justify-content: center; }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 15px;
+            color: #e5eefc;
+        }
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2563eb;
+            cursor: pointer;
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #1e3254;
+        }
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid #2a3d63;
+            color: #c7d7f2;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .btn-cancel:hover { border-color: #7db2ff; color: #7db2ff; }
+        .btn-submit {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-submit:hover { background: #1d4ed8; }
+        .field-locked {
+            color: #f59e0b;
+            font-size: 12px;
+        }
+        .label-locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .form-group select:disabled,
+        .form-group input[type="checkbox"]:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</body>
+</html>

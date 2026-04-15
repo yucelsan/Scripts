@@ -1,0 +1,552 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>INFRA-Rocket - Synoptique Réseau</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=40">
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+</head>
+<body class="topology-shell">
+    <aside class="admin-rail">
+        <div class="rail-brand">INFRA 🚀</div>
+
+        <nav class="rail-menu">
+            <a href="/dashboard" class="rail-item">
+                <span class="rail-icon">🏠</span>
+                <span class="rail-label">Dashboard</span>
+            </a>
+
+            <a href="/topology" class="rail-item active">
+                <span class="rail-icon">🗺️</span>
+                <span class="rail-label">Cartographie</span>
+            </a>
+
+            <button class="rail-item rail-button" onclick="loadOverview()">
+                <span class="rail-icon">🌐</span>
+                <span class="rail-label">Vue globale</span>
+            </button>
+
+            <button class="rail-item rail-button" onclick="toggleIncidentsOnly()">
+                <span class="rail-icon">🚨</span>
+                <span class="rail-label">Mode incidents</span>
+            </button>
+
+            <button class="rail-item rail-button" onclick="fitGraph()">
+                <span class="rail-icon">🎯</span>
+                <span class="rail-label">Centrer</span>
+            </button>
+            {% if user.role == 'admin' %}
+            <a href="/admin/users" class="rail-item">
+                <span class="rail-icon">👥</span>
+                <span class="rail-label">Utilisateurs</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <div class="rail-footer">
+            <a href="/logout" class="rail-item">
+                <span class="rail-icon">↩</span>
+                <span class="rail-label">Déconnexion</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="topology-main">
+        <header class="topology-topbar">
+            <div>
+                <h1>INFRA 🚀 - Synoptique Réseau</h1>
+                <p id="topology-meta">Chargement…</p>
+            </div>
+            <div class="topbar-user">
+                Connecté : {{ user.login }} ({{ user.role }})
+            </div>
+        </header>
+
+        <section class="topology-workspace">
+            <div class="workspace-left">
+                <div class="card toolbar-card">
+                    <div class="page-tabs" id="site-tabs"></div>
+                    <div class="page-tabs sub-tabs">
+                        <button class="site-tab" onclick="setViewMode('all')">Tout</button>
+                        <button class="site-tab" onclick="setViewMode('critical')">Infra critique</button>
+                        <button class="site-tab" onclick="setViewMode('servers')">Serveurs</button>
+                        <button class="site-tab" onclick="setViewMode('access')">Accès / périphériques</button>
+                    </div>  
+                </div>
+
+                <div class="card map-card">
+                    <div id="cy"></div>
+                </div>
+            </div>
+
+            <aside class="workspace-right">
+                <div class="card">
+                    <h2>Détails</h2>
+                    <div id="details-panel">Clique sur un équipement ou une liaison.</div>
+                </div>
+
+                <div class="card">
+                    <h2>Résumé</h2>
+                    <div id="topology-stats">Chargement…</div>
+                </div>
+
+                <div class="card legend-card">
+                    <h2>Légende</h2>
+                    <div class="legend-item"><span class="legend-link ok"></span> Lien OK</div>
+                    <div class="legend-item"><span class="legend-link down"></span> Lien down</div>
+                    <div class="legend-item"><span class="legend-dot ok"></span> OK</div>
+                    <div class="legend-item"><span class="legend-dot warning"></span> Alerte</div>
+                    <div class="legend-item"><span class="legend-dot down"></span> Down</div>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        let cy = null;
+        let topologyData = null;
+        let currentSiteSlug = null;
+        let incidentsOnly = false;
+        let currentViewMode = "all";
+
+        const ICONS = {
+            switch: "/static/icons/switch.svg",
+            router: "/static/icons/router.svg",
+            firewall: "/static/icons/firewall.svg",
+            server: "/static/icons/server.svg",
+            storage: "/static/icons/storage.svg",
+            vmware: "/static/icons/vmware.svg",
+            wifi: "/static/icons/wifi.svg",
+            printer: "/static/icons/printer.svg",
+            pc: "/static/icons/pc.svg"
+        };
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            if (currentSiteSlug) {
+                loadSite(currentSiteSlug);
+            } else {
+                loadOverview();
+            }
+        }
+
+        function shouldKeepEquipment(eq) {
+            if (incidentsOnly && !(eq.status === "down" || (eq.problems_count || 0) > 0 || (eq.ports_down_count || 0) > 0)) {
+                return false;
+            }
+
+            if (currentViewMode === "critical") {
+                return ["security", "network", "virtualization", "storage"].includes(eq.tech_group);
+            }
+
+            if (currentViewMode === "servers") {
+                return ["servers", "services", "virtualization", "storage"].includes(eq.tech_group);
+            }
+
+            if (currentViewMode === "access") {
+                return ["access", "devices", "network"].includes(eq.tech_group);
+            }
+
+            return true;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;");
+        }
+
+        function buildStats(stats) {
+            const byType = stats.by_type || {};
+            return `
+                <div class="detail-row"><strong>Équipements :</strong> ${stats.total_hosts}</div>
+                <div class="detail-row"><strong>Liens :</strong> ${stats.total_links}</div>
+                <div class="detail-row"><strong>Sites :</strong> ${stats.sites}</div>
+                <div class="detail-row"><strong>Switches :</strong> ${byType.switch || 0}</div>
+                <div class="detail-row"><strong>Routers :</strong> ${byType.router || 0}</div>
+                <div class="detail-row"><strong>Firewalls :</strong> ${byType.firewall || 0}</div>
+                <div class="detail-row"><strong>Serveurs :</strong> ${byType.server || 0}</div>
+                <div class="detail-row"><strong>Storage :</strong> ${byType.storage || 0}</div>
+                <div class="detail-row"><strong>Devices :</strong> ${byType.device || 0}</div>
+            `;
+        }
+
+        function renderNodeDetails(d) {
+            const problems = (d.problem_titles || [])
+                .map(p => `<li>${escapeHtml(p)}</li>`)
+                .join("");
+
+            const ports = (d.ports_preview || [])
+                .map(p => `
+                    <tr>
+                        <td>${escapeHtml(p.port_name)}</td>
+                        <td>${escapeHtml(p.status)}</td>
+                        <td>${escapeHtml(p.raw_value)}</td>
+                    </tr>
+                `)
+                .join("");
+
+            return `
+                <div class="detail-row"><strong>Type :</strong> Équipement</div>
+                <div class="detail-row"><strong>Nom :</strong> ${escapeHtml(d.label)}</div>
+                <div class="detail-row"><strong>Catégorie :</strong> ${escapeHtml(d.tech_group)}</div>
+                <div class="detail-row"><strong>Statut :</strong> ${escapeHtml(d.status)}</div>
+                <div class="detail-row"><strong>IP :</strong> ${escapeHtml(d.ip || "-")}</div>
+                <div class="detail-row"><strong>Température :</strong> ${escapeHtml(d.temperature_label || "N/A")}</div>
+                <div class="detail-row"><strong>Vendor :</strong> ${escapeHtml(d.vendor || "-")}</div>
+                <div class="detail-row"><strong>Model :</strong> ${escapeHtml(d.model || "-")}</div>
+                <div class="detail-row"><strong>Ports détectés :</strong> ${escapeHtml(d.ports_count ?? 0)}</div>
+                <div class="detail-row"><strong>Ports down :</strong> ${escapeHtml(d.ports_down_count ?? 0)}</div>
+
+                <div class="sub-block">
+                    <h3>Incidents</h3>
+                    ${problems ? `<ul>${problems}</ul>` : `<p>Aucun incident actif affiché.</p>`}
+                </div>
+
+                <div class="sub-block">
+                    <h3>Ports</h3>
+                    ${ports
+                        ? `<table class="mini-table">
+                            <thead><tr><th>Port</th><th>Statut</th><th>Valeur</th></tr></thead>
+                            <tbody>${ports}</tbody>
+                           </table>`
+                        : `<p>Aucun port exploitable détecté.</p>`
+                    }
+                </div>
+            `;
+        }
+
+        function renderEdgeDetails(d) {
+            return `
+                <div class="detail-row"><strong>Type :</strong> Liaison</div>
+                <div class="detail-row"><strong>Libellé :</strong> ${escapeHtml(d.label || "-")}</div>
+                <div class="detail-row"><strong>Source :</strong> ${escapeHtml(d.source_label || "-")}</div>
+                <div class="detail-row"><strong>Port source :</strong> ${escapeHtml(d.source_port || "-")}</div>
+                <div class="detail-row"><strong>Destination :</strong> ${escapeHtml(d.target_label || "-")}</div>
+                <div class="detail-row"><strong>Port destination :</strong> ${escapeHtml(d.target_port || "-")}</div>
+                <div class="detail-row"><strong>Statut :</strong> ${escapeHtml(d.status || "-")}</div>
+                <div class="detail-row"><strong>Ports source down :</strong> ${escapeHtml(d.source_ports_down ?? 0)}</div>
+                <div class="detail-row"><strong>Ports cible down :</strong> ${escapeHtml(d.target_ports_down ?? 0)}</div>
+            `;
+        }
+
+        function buildTabs(data) {
+            const tabs = document.getElementById("site-tabs");
+            const buttons = [
+                `<button class="site-tab ${currentSiteSlug === null ? 'active' : ''}" onclick="loadOverview()">Vue globale</button>`
+            ];
+
+            for (const site of data.sites) {
+                buttons.push(`
+                    <button class="site-tab ${currentSiteSlug === site.slug ? 'active' : ''}" onclick="loadSite('${site.slug}')">
+                        ${escapeHtml(site.name)}
+                    </button>
+                `);
+            }
+
+            tabs.innerHTML = buttons.join("");
+        }
+
+        function equipmentToCyNode(eq) {
+            return {
+                data: {
+                    id: eq.id,
+                    label: eq.label,
+                    short_label: eq.short_label,
+                    type: eq.type,
+                    tech_group: eq.tech_group,
+                    status: eq.status,
+                    ip: eq.ip,
+                    temperature_label: eq.temperature_label,
+                    vendor: eq.vendor,
+                    model: eq.model,
+                    problem_titles: eq.problem_titles,
+                    ports_preview: eq.ports_preview,
+                    ports_count: eq.ports_count,
+                    ports_down_count: eq.ports_down_count,
+                    icon: ICONS[eq.icon] || ICONS.server
+                },
+                position: eq.position
+            };
+        }
+
+        function edgeToCyEdge(edge) {
+            return {
+                data: {
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    label: edge.label,
+                    status: edge.status,
+                    source_label: edge.source_label,
+                    target_label: edge.target_label,
+                    source_port: edge.source_port,
+                    target_port: edge.target_port,
+                    source_ports_down: edge.source_ports_down,
+                    target_ports_down: edge.target_ports_down
+                }
+            };
+        }
+
+        function buildOverviewElements(data) {
+            const nodes = [];
+            const edges = [];
+            let x = 250;
+
+            for (const site of data.sites) {
+                nodes.push({
+                    data: {
+                        id: `site_${site.slug}`,
+                        label: site.name,
+                        short_label: site.name,
+                        type: "site",
+                        tech_group: "site",
+                        status: "up",
+                        ip: "",
+                        temperature_label: "",
+                        vendor: "",
+                        model: "",
+                        problem_titles: [],
+                        ports_preview: [],
+                        ports_count: 0,
+                        ports_down_count: 0,
+                        icon: ICONS.router
+                    },
+                    position: { x, y: 180 }
+                });
+
+                const network = site.equipments.filter(e => e.tech_group === "network").slice(0, 3);
+                const security = site.equipments.filter(e => e.tech_group === "security").slice(0, 2);
+                const servers = site.equipments.filter(e => ["virtualization", "servers", "storage", "services"].includes(e.tech_group)).slice(0, 6);
+
+                let offsetX = x - 220;
+                for (const eq of [...security, ...network, ...servers]) {
+                    nodes.push({
+                        data: {
+                            ...equipmentToCyNode(eq).data,
+                            id: `${eq.id}_overview`
+                        },
+                        position: {
+                            x: offsetX,
+                            y: ["security"].includes(eq.tech_group) ? 60 : (["network"].includes(eq.tech_group) ? 280 : 470)
+                        }
+                    });
+
+                    edges.push({
+                        data: {
+                            id: `overview_${site.slug}_${eq.id}`,
+                            source: `site_${site.slug}`,
+                            target: `${eq.id}_overview`,
+                            label: eq.tech_group,
+                            status: eq.status === "down" || eq.ports_down_count > 0 ? "down" : "up",
+                            source_label: site.name,
+                            target_label: eq.label,
+                            source_port: "N/A",
+                            target_port: eq.ports_preview?.[0]?.port_name || "N/A",
+                            source_ports_down: 0,
+                            target_ports_down: eq.ports_down_count || 0
+                        }
+                    });
+
+                    offsetX += 150;
+                }
+
+                x += 650;
+            }
+
+            return { nodes, edges };
+        }
+
+        function buildSiteElements(site) {
+            const filteredEquipments = site.equipments.filter(shouldKeepEquipment);
+            const nodes = filteredEquipments.map(equipmentToCyNode);
+            const visibleIds = new Set(nodes.map(n => n.data.id));
+
+            const edges = site.edges
+                .filter(e => visibleIds.has(e.source) && visibleIds.has(e.target))
+                .map(edgeToCyEdge);
+
+            return { nodes, edges };	    
+        }
+
+        function initCy(elements) {
+            if (cy) {
+                cy.destroy();
+            }
+
+            cy = cytoscape({
+                container: document.getElementById("cy"),
+                elements: [...elements.nodes, ...elements.edges],
+                style: [
+                    {
+                        selector: "node",
+                        style: {
+                            "background-opacity": 0,
+                            "background-image": "data(icon)",
+                            "background-fit": "contain",
+                            "background-width": "90%",
+                            "background-height": "90%",
+                            "width": 150,
+                            "height": 115,
+                            "label": "data(short_label)",
+                            "text-valign": "bottom",
+                            "text-halign": "center",
+                            "text-margin-y": 12,
+                            "font-size": 20,
+                            "font-weight": 700,
+                            "color": "#e5eefc",
+                            "text-wrap": "wrap",
+                            "text-max-width": "220px"
+                        }
+                    },
+                    {
+                        selector: 'node[type = "site"]',
+                        style: {
+                            "width": 220,
+                            "height": 140,
+                            "font-size": 32
+                        }
+                    },
+                    {
+                        selector: 'node[status = "warning"]',
+                        style: {
+                            "overlay-color": "#f59e0b",
+                            "overlay-opacity": 0.12
+                        }
+                    },
+                    {
+                        selector: 'node[status = "down"]',
+                        style: {
+                            "overlay-color": "#ef4444",
+                            "overlay-opacity": 0.18
+                        }
+                    },
+                    {
+                        selector: "edge",
+                        style: {
+                            "width": 6,
+                            "line-color": "#22c55e",
+                            "target-arrow-color": "#22c55e",
+                            "target-arrow-shape": "triangle",
+                            "curve-style": "bezier",
+                            "opacity": 0.95,
+                            "label": "data(label)",
+                            "font-size": 16,
+                            "font-weight": 700,
+                            "color": "#b8c7e6",
+                            "text-background-color": "#09152a",
+                            "text-background-opacity": 1,
+                            "text-background-padding": "4px",
+                            "text-rotation": "autorotate"
+                        }
+                    },
+                    {
+                        selector: 'edge[status = "down"]',
+                        style: {
+                            "line-color": "#ef4444",
+                            "target-arrow-color": "#ef4444",
+                            "width": 7
+                        }
+                    },
+                    {
+                        selector: ":selected",
+                        style: {
+                            "border-width": 4,
+                            "border-color": "#60a5fa"
+                        }
+                    }
+                ],
+                layout: {
+                    name: "preset",
+                    fit: false,
+                    padding: 100,
+                    animate: false
+                }
+            });
+
+            cy.on("tap", "node", evt => {
+                document.getElementById("details-panel").innerHTML = renderNodeDetails(evt.target.data());
+            });
+
+            cy.on("tap", "edge", evt => {
+                document.getElementById("details-panel").innerHTML = renderEdgeDetails(evt.target.data());
+            });
+
+            cy.on("tap", evt => {
+                if (evt.target === cy) {
+                    document.getElementById("details-panel").innerHTML = "Clique sur un équipement ou une liaison.";
+                }
+            });
+
+            if (currentSiteSlug === null) {
+                cy.fit(undefined, 80);
+            } else {
+                cy.zoom(0.72);
+                cy.pan({ x: 80, y: 40 });
+            }
+        }
+
+        function fitGraph() {
+            if (!cy) return;
+            cy.fit(undefined, 80);
+        }
+
+        async function loadOverview() {
+            currentSiteSlug = null;
+            await fetchAndRender("/api/topology", true);
+        }
+
+        async function loadSite(siteSlug) {
+            currentSiteSlug = siteSlug;
+            await fetchAndRender(`/api/topology/site/${siteSlug}`, false);
+        }
+
+        function toggleIncidentsOnly() {
+            incidentsOnly = !incidentsOnly;
+            if (currentSiteSlug) {
+                loadSite(currentSiteSlug);
+            } else {
+                loadOverview();
+            }
+        }
+
+        async function fetchAndRender(url, overviewMode) {
+            const meta = document.getElementById("topology-meta");
+            const statsBox = document.getElementById("topology-stats");
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.details || "Erreur de chargement");
+                }
+
+                topologyData = data;
+                buildTabs(data);
+                statsBox.innerHTML = buildStats(data.stats);
+
+                if (overviewMode) {
+                    meta.innerText = `Vue globale | Sites: ${data.stats.sites} | Équipements: ${data.stats.total_hosts} | Liens: ${data.stats.total_links} | Généré le: ${data.generated_at}`;
+                    initCy(buildOverviewElements(data));
+                } else {
+                    const site = data.sites[0];
+                    meta.innerText = `Site: ${site.name} | Équipements: ${site.equipments.length} | Liens: ${site.edges.length} | Généré le: ${data.generated_at}`;
+                    initCy(buildSiteElements(site));
+                }
+
+                document.getElementById("details-panel").innerHTML = "Clique sur un équipement ou une liaison.";
+            } catch (error) {
+                meta.innerText = "Erreur de chargement";
+                document.getElementById("details-panel").innerHTML = `<div class="error">Erreur : ${escapeHtml(error.message)}</div>`;
+                document.getElementById("topology-stats").innerHTML = `<div class="error">Impossible de charger la topologie.</div>`;
+            }
+        }
+
+        loadOverview();
+    </script>
+</body>
+</html>
+
