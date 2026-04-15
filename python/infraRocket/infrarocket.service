@@ -1,0 +1,17 @@
+# /etc/systemd/system/infrarocket.service
+[Unit]
+Description=INFRA Rocket API (FastAPI)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/infraRocket
+ExecStart=/opt/infraRocket/venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001
+Restart=always
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
